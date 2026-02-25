@@ -1,0 +1,54 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+canvas {
+  display: block;
+}
+
+body{
+  background: white;
+}
+
+main{
+  position:fixed;
+  width: 100%;
+  height:100%;
+}
+
+#sketch-container{
+  width: 100%;
+  height: 100%;
+}
+
+/*styled button */
+button{
+  background-color: #371bd3;
+  border: solid 1px #371bd3;
+  border-radius: 10px;
+  color: white;
+  padding: 15px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  min-width: 200px;
+  cursor: pointer;
+}
+
+/*centered button */
+#permission-button{
+  position: fixed;
+  bottom: 10%;
+  left: 50%;
+  font-size: 16px;
+  width: 240px;
+  margin-left: -120px;
+  display: block;
+}
+
+/* Custom to match our canvas size */
+@media screen and (max-width: 500px) {
+  /*CSS styling that you only want on small devices*/
+
+}
