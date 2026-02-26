@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
     // Broadcast cursor position to all other clients (desktop clients)
     socket.broadcast.emit('cursor-move', cursorCoords);
     // Uncomment for debugging:
-    // console.log('Cursor updated from phone:', cursorCoords);
+    console.log('Cursor updated from phone:', cursorCoords);
   });
 
   // Listen for mouse down / up events from the phone client and forward them
