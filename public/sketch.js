@@ -49,8 +49,8 @@ const SEND_RATE = 16; // ms (~60 fps)
 
 // Orientation range for cursor control (degrees)
 // Increasing this range requires larger device rotations; decreasing makes it more sensitive
-const ALPHA_RANGE = 45;  // 90 degree total sweep for left-right (decreasing alpha moves right)
-const BETA_RANGE = 45;   // 90 degree total sweep for up-down (decreasing beta moves down)
+const ALPHA_RANGE = 40;  // 90 degree total sweep for left-right (decreasing alpha moves right)
+const BETA_RANGE = 23;   // 90 degree total sweep for up-down (decreasing beta moves down)
 
 function preload() {
   pistolImage = loadImage('pistol.png');
