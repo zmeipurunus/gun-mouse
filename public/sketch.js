@@ -38,6 +38,9 @@ let pointerX = 0.5;
 let pointerY = 0.5;
 let isTouching = false;
 
+// Cursor sensitivity control
+const CURSOR_SENSITIVITY = 0.05; // Adjust this value to change cursor responsiveness (higher = more sensitive)
+
 // throttle device motion sending
 let lastSent = 0;
 const SEND_RATE = 16; // ms (~60 fps)
@@ -80,25 +83,28 @@ function draw() {
     displayPermissionMessage();
   } else {
     // Update pointer position based on device orientation
-    // Map device orientation to normalized coordinates (0-1)
-    // gamma (leftToRight): -90 to +90 degrees -> map to 0-1
-    // beta (frontToBack): -90 to +90 degrees -> map to 0-1
-    pointerX = map(leftToRight, -90, 90, 0, 1);
-    pointerY = map(frontToBack, -90, 90, 0, 1);
+    // Expected device orientation: Gamma around 90 (-90 degrees)
+    // Movement:
+    // - Left to right: controlled by decreasing Alpha
+    // - Up to down: controlled by decreasing Beta
+    // Apply sensitivity multiplier to control cursor responsiveness
+    pointerX = 0.5 - (rotateDegrees * CURSOR_SENSITIVITY);
+    pointerY = 0.5 - (frontToBack * CURSOR_SENSITIVITY);
+
+    // Clamp values to 0-1 range
+    pointerX = constrain(pointerX, 0, 1);
+    pointerY = constrain(pointerY, 0, 1);
 
     // Send pointer data to server
     emitData();
 
-    // Display pistol at pointer position
-    let screenX = pointerX * width;
-    let screenY = pointerY * height;
-
+    // Display pistol centered on screen (fixed position, doesn't move)
     if (pistolImage) {
-      image(pistolImage, screenX, screenY, 100, 100);
+      image(pistolImage, width / 2, height / 2, 150, 150);
     } else {
       // Fallback circle if image not loaded
       fill(0, 255, 0, 100);
-      circle(screenX, screenY, 50);
+      circle(width / 2, height / 2, 50);
     }
 
     // Debug text
@@ -128,7 +134,7 @@ function visualiseMyData() {
 
   text("Orientation:", 10, 100);
   text(
-    "Alpha: " + rotateDegrees.toFixed(2),
+    "Alpha (X): " + rotateDegrees.toFixed(2),
     10,
     120
   );
@@ -138,9 +144,14 @@ function visualiseMyData() {
     140
   );
   text(
-    "Gamma (X): " + leftToRight.toFixed(2),
+    "Gamma: " + leftToRight.toFixed(2),
     10,
     160
+  );
+  text(
+    "Sensitivity: " + CURSOR_SENSITIVITY.toFixed(2),
+    10,
+    180
   );
 }
 
