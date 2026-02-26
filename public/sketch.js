@@ -20,6 +20,14 @@ let hasPermission = false;
 // Pistol image
 let pistolImage;
 
+// Device motion
+let accX = 0;
+let accY = 0;
+let accZ = 0;
+let rrateX = 0;
+let rrateY = 0;
+let rrateZ = 0;
+
 // Device orientation
 let rotateDegrees = 0;
 let frontToBack = 0;
@@ -33,6 +41,7 @@ let baselineBeta = null;
 // Crosshair/laser pointer position (normalized 0-1)
 let pointerX = 0.5;
 let pointerY = 0.5;
+let isTouching = false;
 
 // throttle device motion sending
 let lastSent = 0;
@@ -182,22 +191,26 @@ function displayPermissionMessage() {
 
 // Handle touch events for cursor down/up
 function touchStarted() {
+  isTouching = true;
   socket.emit('cursor-down');
   return false;
 }
 
 function touchEnded() {
+  isTouching = false;
   socket.emit('cursor-up');
   return false;
 }
 
 // Desktop fallback
 function mousePressed() {
+  isTouching = true;
   socket.emit('cursor-down');
   return false;
 }
 
 function mouseReleased() {
+  isTouching = false;
   socket.emit('cursor-up');
   return false;
 }
@@ -252,6 +265,22 @@ function windowResized() {
 // --------------------
 // Sensor handlers
 // --------------------
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/devicemotion_event
+function deviceMotionHandler(event) {
+  if (!event.acceleration || !event.rotationRate){
+    return;
+  }
+
+  //acceleration in meters per second
+  accX = event.acceleration.x || 0;
+  accY = event.acceleration.y || 0;
+  accZ = event.acceleration.z || 0;
+
+  //degrees per second
+  rrateZ = event.rotationRate.alpha || 0;
+  rrateX = event.rotationRate.beta || 0;
+  rrateY = event.rotationRate.gamma || 0;
+}
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/deviceorientation_event
 // https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events/Orientation_and_motion_data_explained
