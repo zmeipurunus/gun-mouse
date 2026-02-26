@@ -30,16 +30,18 @@ let leftToRight = 0;
 let baselineAlpha = null;
 let baselineBeta = null;
 
-// Crosshair/laser pointer position (raw orientation deltas)
-let pointerX = 0;
-let pointerY = 0;
+// Crosshair/laser pointer position (normalized 0-1)
+let pointerX = 0.5;
+let pointerY = 0.5;
 
 // throttle device motion sending
 let lastSent = 0;
 const SEND_RATE = 16; // ms (~60 fps)
 
-// NOTE: ALPHA_RANGE and BETA_RANGE have been moved to robotjsp/app.js
-// for easier tuning on the desktop client side
+// Orientation range for cursor control (degrees)
+// Increasing this range requires larger device rotations; decreasing makes it more sensitive
+const ALPHA_RANGE = 45;  // 90 degree total sweep for left-right (decreasing alpha moves right)
+const BETA_RANGE = 45;   // 90 degree total sweep for up-down (decreasing beta moves down)
 
 function preload() {
   pistolImage = loadImage('pistol.png');
@@ -64,7 +66,8 @@ function setup() {
     askButton.id("permission-button");
     askButton.mousePressed(handlePermissionButtonPressed);
   } else {
-    // non-iOS devices always get orientation events
+    // Android / non-permission devices
+    window.addEventListener("devicemotion", deviceMotionHandler, true);
     window.addEventListener("deviceorientation", deviceOrientationHandler, true);
     hasPermission = true;
   }
@@ -78,8 +81,8 @@ function draw() {
     displayPermissionMessage();
   } else {
     // Update pointer position based on device orientation
-    // Calculate deltas from baseline orientation (captured on first sensor reading)
-    // These raw deltas are sent to the desktop client (robotjsp/app.js) for mapping
+    // Calculate delta from baseline orientation (captured on first sensor reading)
+    // This ensures the mapping works regardless of device startup orientation
 
     // Calculate alpha delta (handle 360-degree wrap)
     let alphaDelta = rotateDegrees - baselineAlpha;
@@ -89,11 +92,11 @@ function draw() {
     // Calculate beta delta
     let betaDelta = frontToBack - baselineBeta;
 
-    // Store for emission (no mapping done here; desktop client handles mapping)
-    pointerX = alphaDelta;  // raw delta
-    pointerY = betaDelta;   // raw delta
+    // Map deltas to 0-1 range using the defined ranges
+    pointerX = map(alphaDelta, ALPHA_RANGE, -ALPHA_RANGE, 0, 1, true);
+    pointerY = map(betaDelta, BETA_RANGE, -BETA_RANGE, 0, 1, true);
 
-    // Emit the raw deltas for desktop client to process
+    // Emit the normalized position
     emitData();
 
     // draw the pistol centered and scaled to fill the canvas; it no longer follows the pointer
@@ -157,7 +160,7 @@ function emitData() {
   }
   lastSent = now;
 
-  // Emit raw orientation deltas to server
+  // Emit normalized cursor position to server
   socket.emit('cursor-update', {
     x: pointerX,
     y: pointerY
@@ -204,7 +207,21 @@ function mouseReleased() {
 // --------------------
 
 function handlePermissionButtonPressed() {
-  // request permission for orientation events (iOS)
+  DeviceMotionEvent.requestPermission()
+    .then((response) => {
+      if (response === "granted") {
+        //permission granted
+        hasPermission = true;
+
+        window.addEventListener(
+          "devicemotion",
+          deviceMotionHandler,
+          true
+        );
+      }
+    })
+    .catch(console.error);
+
   DeviceOrientationEvent.requestPermission()
     .then((response) => {
       if (response === "granted") {
@@ -235,7 +252,6 @@ function windowResized() {
 // --------------------
 // Sensor handlers
 // --------------------
-
 
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/deviceorientation_event
 // https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events/Orientation_and_motion_data_explained
