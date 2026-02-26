@@ -33,6 +33,11 @@ let rotateDegrees = 0;
 let frontToBack = 0;
 let leftToRight = 0;
 
+// Baseline orientation values (captured on first sensor reading)
+// Used to calculate deltas regardless of device startup orientation
+let baselineAlpha = null;
+let baselineBeta = null;
+
 // Crosshair/laser pointer position (normalized 0-1)
 let pointerX = 0.5;
 let pointerY = 0.5;
@@ -85,18 +90,20 @@ function draw() {
     displayPermissionMessage();
   } else {
     // Update pointer position based on device orientation
-    // The user holds the phone screen up; default alpha ≈ 0, beta ≈ 0.
-    // We recenter alpha around 0 to handle the 360-degree wrap.
-    // Decreasing alpha (rotating left) moves cursor to the right.
-    // Decreasing beta (tilting forward) moves cursor downward.
+    // Calculate delta from baseline orientation (captured on first sensor reading)
+    // This ensures the mapping works regardless of device startup orientation
 
-    // Convert alpha to -180 to +180 range centered at 0
-    let alphaDelta = rotateDegrees;
+    // Calculate alpha delta (handle 360-degree wrap)
+    let alphaDelta = rotateDegrees - baselineAlpha;
     if (alphaDelta > 180) alphaDelta -= 360;
+    if (alphaDelta < -180) alphaDelta += 360;
 
-    // Map centered deltas to 0-1 range using the defined ranges
+    // Calculate beta delta
+    let betaDelta = frontToBack - baselineBeta;
+
+    // Map deltas to 0-1 range using the defined ranges
     pointerX = map(alphaDelta, ALPHA_RANGE, -ALPHA_RANGE, 0, 1, true);
-    pointerY = map(frontToBack, BETA_RANGE, -BETA_RANGE, 0, 1, true);
+    pointerY = map(betaDelta, BETA_RANGE, -BETA_RANGE, 0, 1, true);
 
     // Emit the normalized position
     emitData();
@@ -281,6 +288,13 @@ function deviceOrientationHandler(event) {
   rotateDegrees = event.alpha || 0;
   frontToBack = event.beta || 0;
   leftToRight = event.gamma || 0;
+
+  // Capture baseline orientation on first reading
+  if (baselineAlpha === null) {
+    baselineAlpha = rotateDegrees;
+    baselineBeta = frontToBack;
+    console.log(`Baseline orientation set: alpha=${baselineAlpha}, beta=${baselineBeta}`);
+  }
 }
 
 
