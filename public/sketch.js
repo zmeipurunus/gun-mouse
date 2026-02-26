@@ -38,9 +38,6 @@ let pointerX = 0.5;
 let pointerY = 0.5;
 let isTouching = false;
 
-// Cursor sensitivity control
-const CURSOR_SENSITIVITY = 0.05; // Adjust this value to change cursor responsiveness (higher = more sensitive)
-
 // throttle device motion sending
 let lastSent = 0;
 const SEND_RATE = 16; // ms (~60 fps)
@@ -83,28 +80,25 @@ function draw() {
     displayPermissionMessage();
   } else {
     // Update pointer position based on device orientation
-    // Expected device orientation: Gamma around 90 (-90 degrees)
-    // Movement:
-    // - Left to right: controlled by decreasing Alpha
-    // - Up to down: controlled by decreasing Beta
-    // Apply sensitivity multiplier to control cursor responsiveness
-    pointerX = 0.5 - (rotateDegrees * CURSOR_SENSITIVITY);
-    pointerY = 0.5 - (frontToBack * CURSOR_SENSITIVITY);
-
-    // Clamp values to 0-1 range
-    pointerX = constrain(pointerX, 0, 1);
-    pointerY = constrain(pointerY, 0, 1);
+    // Device is aligned with Gamma ~90 (landscape)
+    // Alpha (rotation): decreasing Alpha = cursor moves right (X increases)
+    // Beta (front-to-back tilt): decreasing Beta = cursor moves down (Y increases)
+    // Map to normalized coordinates (0-1) with inverse mapping
+    pointerX = constrain(map(rotateDegrees, 270, 90, 0, 1), 0, 1);
+    pointerY = constrain(map(frontToBack, 90, -90, 0, 1), 0, 1);
 
     // Send pointer data to server
     emitData();
 
-    // Display pistol centered on screen (fixed position, doesn't move)
+    // Display pistol centered on screen (fixed position and size)
+    const pistolSize = 120;
+    
     if (pistolImage) {
-      image(pistolImage, width / 2, height / 2, 150, 150);
+      image(pistolImage, width / 2, height / 2, pistolSize, pistolSize);
     } else {
       // Fallback circle if image not loaded
       fill(0, 255, 0, 100);
-      circle(width / 2, height / 2, 50);
+      circle(width / 2, height / 2, pistolSize);
     }
 
     // Debug text
@@ -122,37 +116,34 @@ function visualiseMyData() {
   push();
   fill(255);
   rectMode(CORNER);
-  rect(0, 20, width / 2, 190);
+  rect(0, 20, width / 2, 210);
   pop();
 
   fill(0);
   textAlign(LEFT);
   textSize(12);
 
-  text("Pointer X: " + pointerX.toFixed(2), 10, 40);
-  text("Pointer Y: " + pointerY.toFixed(2), 10, 60);
+  text("Cursor Position:", 10, 40);
+  text("X (from Alpha): " + pointerX.toFixed(2), 10, 60);
+  text("Y (from Beta): " + pointerY.toFixed(2), 10, 80);
 
-  text("Orientation:", 10, 100);
+  text("Device Orientation:", 10, 120);
   text(
-    "Alpha (X): " + rotateDegrees.toFixed(2),
-    10,
-    120
-  );
-  text(
-    "Beta (Y): " + frontToBack.toFixed(2),
+    "Alpha (rotation): " + rotateDegrees.toFixed(1) + "°",
     10,
     140
   );
   text(
-    "Gamma: " + leftToRight.toFixed(2),
+    "Beta (forward/tilt): " + frontToBack.toFixed(1) + "°",
     10,
     160
   );
   text(
-    "Sensitivity: " + CURSOR_SENSITIVITY.toFixed(2),
+    "Gamma (side tilt): " + leftToRight.toFixed(1) + "°",
     10,
     180
   );
+  text("(Align Gamma to ~90°)", 10, 200);
 }
 
 // SEND DATA TO SERVER
