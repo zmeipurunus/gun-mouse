@@ -38,19 +38,13 @@ let leftToRight = 0;
 let baselineAlpha = null;
 let baselineBeta = null;
 
-// Crosshair/laser pointer position (normalized 0-1)
-let pointerX = 0.5;
-let pointerY = 0.5;
-let isTouching = false;
 
 // throttle device motion sending
 let lastSent = 0;
 const SEND_RATE = 16; // ms (~60 fps)
 
-// Orientation range for cursor control (degrees)
-// Increasing this range requires larger device rotations; decreasing makes it more sensitive
-const ALPHA_RANGE = 36;  //total sweep for left-right
-const BETA_RANGE = 23;   //total sweep for up-down
+
+
 
 function preload() {
   pistolImage = loadImage('pistol.png');
@@ -101,12 +95,8 @@ function draw() {
     // Calculate beta delta
     let betaDelta = frontToBack - baselineBeta;
 
-    // Map deltas to 0-1 range using the defined ranges
-    pointerX = map(alphaDelta, ALPHA_RANGE, -ALPHA_RANGE, 0, 1, true);
-    pointerY = map(betaDelta, BETA_RANGE, -BETA_RANGE, 0, 1, true);
-
-    // Emit the normalized position
-    emitData();
+    // Send raw deltas to server; desktop client will apply sensitivity mapping
+    emitData(alphaDelta, betaDelta);
 
     // draw the pistol centered and scaled to fill the canvas; it no longer follows the pointer
     if (pistolImage) {
@@ -139,8 +129,6 @@ function visualiseMyData() {
   textAlign(LEFT);
   textSize(12);
 
-  text("Pointer X: " + pointerX.toFixed(2), 10, 40);
-  text("Pointer Y: " + pointerY.toFixed(2), 10, 60);
 
   text("Orientation:", 10, 100);
   text(
@@ -161,7 +149,7 @@ function visualiseMyData() {
 }
 
 // SEND DATA TO SERVER
-function emitData() {
+function emitData(alphaDelta, betaDelta) {
   //throttle
   let now = millis();
   if (now - lastSent < SEND_RATE) {
@@ -169,10 +157,10 @@ function emitData() {
   }
   lastSent = now;
 
-  // Emit normalized cursor position to server
+  // Emit raw orientation deltas to server
   socket.emit('cursor-update', {
-    x: pointerX,
-    y: pointerY
+    alphaDelta: alphaDelta,
+    betaDelta: betaDelta
   });
 }
 
@@ -191,26 +179,22 @@ function displayPermissionMessage() {
 
 // Handle touch events for cursor down/up
 function touchStarted() {
-  isTouching = true;
   socket.emit('cursor-down');
   return false;
 }
 
 function touchEnded() {
-  isTouching = false;
   socket.emit('cursor-up');
   return false;
 }
 
 // Desktop fallback
 function mousePressed() {
-  isTouching = true;
   socket.emit('cursor-down');
   return false;
 }
 
 function mouseReleased() {
-  isTouching = false;
   socket.emit('cursor-up');
   return false;
 }
