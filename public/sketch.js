@@ -33,6 +33,9 @@ let rotateDegrees = 0;
 let frontToBack = 0;
 let leftToRight = 0;
 
+// calibration baseline for alpha; set when we first get a reading
+let centerAlpha = null;
+
 // Crosshair/laser pointer position (normalized 0-1)
 let pointerX = 0.5;
 let pointerY = 0.5;
@@ -90,7 +93,22 @@ function draw() {
     // normalize alpha into 0‑360 range just in case
     let a = rotateDegrees % 360;
     if (a < 0) a += 360;
-    pointerX = map(a, 360, 0, 0, 1, true);
+
+    // set calibration baseline on first reading
+    if (centerAlpha === null) {
+      centerAlpha = a;
+    }
+
+    // compute shortest angular difference from baseline
+    // result in range [-180, 180]
+    function angleDelta(base, current) {
+      let diff = (current - base + 540) % 360 - 180;
+      return diff;
+    }
+
+    let offset = angleDelta(centerAlpha, a);
+    // map +/-90 degrees of rotation to full width; clamp beyond
+    pointerX = map(offset, -90, 90, 0, 1, true);
 
     // beta is stored in frontToBack; map from 90..-90 -> 0..1 (downwards when beta decreases)
     pointerY = map(frontToBack, 90, -90, 0, 1, true);
@@ -134,20 +152,35 @@ function visualiseMyData() {
 
   text("Orientation:", 10, 100);
   text(
-    "Alpha: " + rotateDegrees.toFixed(2),
+    "Alpha: " + rotateDegrees.toFixed(2) + (centerAlpha !== null ? ` (base ${centerAlpha.toFixed(1)})` : ""),
     10,
     120
   );
-  text(
-    "Beta: " + frontToBack.toFixed(2),
-    10,
-    140
-  );
-  text(
-    "Gamma: " + leftToRight.toFixed(2),
-    10,
-    160
-  );
+  if (centerAlpha !== null) {
+    let off = angleDelta(centerAlpha, rotateDegrees % 360);
+    text(`Offset: ${off.toFixed(1)}`, 10, 140);
+    text(
+      "Beta: " + frontToBack.toFixed(2),
+      10,
+      160
+    );
+    text(
+      "Gamma: " + leftToRight.toFixed(2),
+      10,
+      180
+    );
+  } else {
+    text(
+      "Beta: " + frontToBack.toFixed(2),
+      10,
+      140
+    );
+    text(
+      "Gamma: " + leftToRight.toFixed(2),
+      10,
+      160
+    );
+  }
 }
 
 // SEND DATA TO SERVER
