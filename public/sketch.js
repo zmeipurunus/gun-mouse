@@ -38,6 +38,8 @@ let leftToRight = 0;
 let baselineAlpha = null;
 let baselineBeta = null;
 
+let alphaDelta = 0.5;
+let betaDelta = 0.5;
 
 // throttle device motion sending
 let lastSent = 0;
