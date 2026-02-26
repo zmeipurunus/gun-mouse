@@ -42,6 +42,11 @@ let isTouching = false;
 let lastSent = 0;
 const SEND_RATE = 16; // ms (~60 fps)
 
+// Orientation range for cursor control (degrees)
+// Increasing this range requires larger device rotations; decreasing makes it more sensitive
+const ALPHA_RANGE = 45;  // 90 degree total sweep for left-right (decreasing alpha moves right)
+const BETA_RANGE = 45;   // 90 degree total sweep for up-down (decreasing beta moves down)
+
 function preload() {
   pistolImage = loadImage('pistol.png');
 }
@@ -80,20 +85,18 @@ function draw() {
     displayPermissionMessage();
   } else {
     // Update pointer position based on device orientation
-    // The user holds the phone screen up; default alpha ≈ 0 or 360, beta ≈ 0.
-    // Moving device left→right decreases alpha.  Map alpha (0‑360) so that
-    // decreasing values move the cursor from left to right across the screen.
-    // Moving device up→down decreases beta.  Map beta (‑90‑90) so that
-    // decreasing values move the cursor top→bottom.
-    // We send the normalized coordinates to the server for mouse control.
+    // The user holds the phone screen up; default alpha ≈ 0, beta ≈ 0.
+    // We recenter alpha around 0 to handle the 360-degree wrap.
+    // Decreasing alpha (rotating left) moves cursor to the right.
+    // Decreasing beta (tilting forward) moves cursor downward.
 
-    // normalize alpha into 0‑360 range just in case
-    let a = rotateDegrees % 360;
-    if (a < 0) a += 360;
-    pointerX = map(a, 360, 0, 0, 1, true);
+    // Convert alpha to -180 to +180 range centered at 0
+    let alphaDelta = rotateDegrees;
+    if (alphaDelta > 180) alphaDelta -= 360;
 
-    // beta is stored in frontToBack; map from 90..-90 -> 0..1 (downwards when beta decreases)
-    pointerY = map(frontToBack, 90, -90, 0, 1, true);
+    // Map centered deltas to 0-1 range using the defined ranges
+    pointerX = map(alphaDelta, ALPHA_RANGE, -ALPHA_RANGE, 0, 1, true);
+    pointerY = map(frontToBack, BETA_RANGE, -BETA_RANGE, 0, 1, true);
 
     // Emit the normalized position
     emitData();
