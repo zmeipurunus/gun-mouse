@@ -7,6 +7,21 @@ socket.on('connect', () => {
   socket.emit('identify', 'mobile');
 });
 
+// orientation tracking for relative movement
+let lastAlpha = null;
+let lastBeta = null;
+
+// sensitivity multipliers for mapping rotation to normalized cursor
+const SENS_X = 0.005; // adjust as needed for responsiveness
+const SENS_Y = 0.005;
+
+// helper to compute shortest angular difference in degrees
+function angleDiff(current, previous) {
+  let diff = current - previous;
+  diff = ((diff + 180) % 360) - 180; // wrap to [-180,180]
+  return diff;
+}
+
 // Handle rejection if another mobile client is already connected
 socket.on('rejected', (message) => {
   console.error('Connection rejected:', message);
@@ -79,20 +94,37 @@ function draw() {
   if (!hasPermission) {
     displayPermissionMessage();
   } else {
-    // Update pointer position based on device orientation
-    // Device is aligned with Gamma ~90 (landscape)
-    // Alpha (rotation): decreasing Alpha = cursor moves right (X increases)
-    // Beta (front-to-back tilt): decreasing Beta = cursor moves down (Y increases)
-    // Map to normalized coordinates (0-1) with inverse mapping
-    pointerX = constrain(map(rotateDegrees, 270, 90, 0, 1), 0, 1);
-    pointerY = constrain(map(frontToBack, 90, -90, 0, 1), 0, 1);
+    // Relative movement calculation
+    if (lastAlpha === null) {
+      lastAlpha = rotateDegrees;
+      lastBeta = frontToBack;
+    }
+
+    // compute change since last frame (wrapped)
+    let dA = angleDiff(rotateDegrees, lastAlpha);
+    let dB = angleDiff(frontToBack, lastBeta);
+
+    // discard large jumps (likely from axis flip) or when gamma is far from landscape
+    if (
+      Math.abs(dA) < 90 &&
+      Math.abs(dB) < 90 &&
+      Math.abs(leftToRight - 90) < 30 // require gamma about 90 ±30°
+    ) {
+      pointerX += -dA * SENS_X; // negative because decreasing alpha -> move right
+      pointerY += -dB * SENS_Y; // negative because decreasing beta -> move down
+
+      pointerX = constrain(pointerX, 0, 1);
+      pointerY = constrain(pointerY, 0, 1);
+    }
+
+    lastAlpha = rotateDegrees;
+    lastBeta = frontToBack;
 
     // Send pointer data to server
     emitData();
 
     // Display pistol centered on screen (fixed position and size)
     const pistolSize = 120;
-    
     if (pistolImage) {
       image(pistolImage, width / 2, height / 2, pistolSize, pistolSize);
     } else {
