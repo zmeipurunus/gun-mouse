@@ -129,6 +129,8 @@ function visualiseMyData() {
   textAlign(LEFT);
   textSize(12);
 
+  text("Pointer X: " + alphaDelta.toFixed(2));
+  text("Pointer Y: " + betaDelta.toFixed(2));
 
   text("Orientation:", 10, 100);
   text(
