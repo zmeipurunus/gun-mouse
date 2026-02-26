@@ -80,25 +80,31 @@ function draw() {
     displayPermissionMessage();
   } else {
     // Update pointer position based on device orientation
-    // Device is aligned with Gamma ~90 (landscape)
-    // Alpha (rotation): decreasing Alpha = cursor moves right (X increases)
-    // Beta (front-to-back tilt): decreasing Beta = cursor moves down (Y increases)
-    // Map to normalized coordinates (0-1) with inverse mapping
-    pointerX = constrain(map(rotateDegrees, 270, 90, 0, 1), 0, 1);
-    pointerY = constrain(map(frontToBack, 90, -90, 0, 1), 0, 1);
+    // The user holds the phone screen up; default alpha ≈ 0 or 360, beta ≈ 0.
+    // Moving device left→right decreases alpha.  Map alpha (0‑360) so that
+    // decreasing values move the cursor from left to right across the screen.
+    // Moving device up→down decreases beta.  Map beta (‑90‑90) so that
+    // decreasing values move the cursor top→bottom.
+    // We send the normalized coordinates to the server for mouse control.
 
-    // Send pointer data to server
+    // normalize alpha into 0‑360 range just in case
+    let a = rotateDegrees % 360;
+    if (a < 0) a += 360;
+    pointerX = map(a, 360, 0, 0, 1, true);
+
+    // beta is stored in frontToBack; map from 90..-90 -> 0..1 (downwards when beta decreases)
+    pointerY = map(frontToBack, 90, -90, 0, 1, true);
+
+    // Emit the normalized position
     emitData();
 
-    // Display pistol centered on screen (fixed position and size)
-    const pistolSize = 120;
-    
+    // draw the pistol centered and scaled to fill the canvas; it no longer follows the pointer
     if (pistolImage) {
-      image(pistolImage, width / 2, height / 2, pistolSize, pistolSize);
+      image(pistolImage, width / 2, height / 2, width, height);
     } else {
-      // Fallback circle if image not loaded
+      // Fallback rectangle if image not loaded
       fill(0, 255, 0, 100);
-      circle(width / 2, height / 2, pistolSize);
+      rect(width / 2, height / 2, width * 0.5, height * 0.5);
     }
 
     // Debug text
@@ -116,34 +122,32 @@ function visualiseMyData() {
   push();
   fill(255);
   rectMode(CORNER);
-  rect(0, 20, width / 2, 210);
+  rect(0, 20, width / 2, 190);
   pop();
 
   fill(0);
   textAlign(LEFT);
   textSize(12);
 
-  text("Cursor Position:", 10, 40);
-  text("X (from Alpha): " + pointerX.toFixed(2), 10, 60);
-  text("Y (from Beta): " + pointerY.toFixed(2), 10, 80);
+  text("Pointer X: " + pointerX.toFixed(2), 10, 40);
+  text("Pointer Y: " + pointerY.toFixed(2), 10, 60);
 
-  text("Device Orientation:", 10, 120);
+  text("Orientation:", 10, 100);
   text(
-    "Alpha (rotation): " + rotateDegrees.toFixed(1) + "°",
+    "Alpha: " + rotateDegrees.toFixed(2),
+    10,
+    120
+  );
+  text(
+    "Beta: " + frontToBack.toFixed(2),
     10,
     140
   );
   text(
-    "Beta (forward/tilt): " + frontToBack.toFixed(1) + "°",
+    "Gamma: " + leftToRight.toFixed(2),
     10,
     160
   );
-  text(
-    "Gamma (side tilt): " + leftToRight.toFixed(1) + "°",
-    10,
-    180
-  );
-  text("(Align Gamma to ~90°)", 10, 200);
 }
 
 // SEND DATA TO SERVER
